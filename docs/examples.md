@@ -149,7 +149,7 @@ Tested API: SYCL
 ```
 
 
-## Intel Alder Lake iGPU + RTX 3080 Ti (Windows 11, Mesa 26.0.6, NVIDIA driver 595.71.05)
+## Intel Alder Lake iGPU + RTX 3080 Ti (Windows 11, Intel driver 101.7085, NVIDIA driver 596.36)
 
 ```
 Running on Intel(R) Iris(R) Xe Graphics
