@@ -162,7 +162,11 @@ void runTestsCuda(CUdevice cuDevice, void (*checkMemoryContentCallback)(const vo
                  * cudaMemPrefetchAsync,
                  */
                 if (deviceProp.concurrentManagedAccess) {
+#ifdef cudaMemPrefetchAsync_v2
                     errorCheckCuda(cudaMemPrefetchAsync_v2(
+#else
+                    errorCheckCuda(cudaMemPrefetchAsync(
+#endif
                             ptrSrc, sizeInBytes, cudaMemLocation{cudaMemLocationTypeDevice, cuDevice}, 0,
                             stream), "cudaMemPrefetchAsync");
                 }
