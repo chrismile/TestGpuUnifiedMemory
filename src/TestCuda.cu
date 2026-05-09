@@ -110,6 +110,9 @@ void runTestsCuda(CUdevice cuDevice) {
     cudaStream_t stream{};
     errorCheckCuda(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking), "cudaStreamCreateWithFlags");
 
+    cudaDeviceProp deviceProp{};
+    errorCheckCuda(cudaGetDeviceProperties(&deviceProp, cuDevice), "cudaGetDeviceProperties");
+
     const size_t sizeInBytes = numElements * sizeof(float);
 
     float* ptrSrc = nullptr;
@@ -150,11 +153,20 @@ void runTestsCuda(CUdevice cuDevice) {
         {
             errorCheckCuda(cudaMallocManaged(reinterpret_cast<void**>(&ptrSrc), sizeInBytes), "cudaMallocManaged");
             // cudaMemAdvise makes things slower on an RTX 3090.
-            //errorCheckCuda(cudaMemAdvise(ptrSrc, sizeInBytes, cudaMemAdviseSetReadMostly, cudaMemLocationTypeDevice), "cudaMemPrefetchAsync");
+            //errorCheckCuda(cudaMemAdvise(ptrSrc, sizeInBytes, cudaMemAdviseSetReadMostly, cudaMemLocationTypeDevice), "cudaMemAdvise");
             auto uploadDataCallback = [&]() {
                 errorCheckCuda(cudaMemcpyAsync(
-                        ptrSrc, bufferHost, sizeInBytes, cudaMemcpyHostToHost, stream), "cudaMemcpyAsync");
-                errorCheckCuda(cudaMemPrefetchAsync_v2(ptrSrc, sizeInBytes, cudaMemLocation{cudaMemLocationTypeDevice, cuDevice}, 0, stream), "cudaMemPrefetchAsync");
+                        ptrSrc, bufferHost, sizeInBytes, cudaMemcpyHostToDevice, stream), "cudaMemcpyAsync");
+                /*
+                 * https://stackoverflow.com/questions/43430216/cudamemprefetchasync-returns-cudaerrorinvaliddevice-why
+                 * seems to indicate that the device property concurrentManagedAccess is needed for
+                 * cudaMemPrefetchAsync,
+                 */
+                if (deviceProp.concurrentManagedAccess) {
+                    errorCheckCuda(cudaMemPrefetchAsync_v2(
+                            ptrSrc, sizeInBytes, cudaMemLocation{cudaMemLocationTypeDevice, cuDevice}, 0,
+                            stream), "cudaMemPrefetchAsync");
+                }
             };
             double elapsedTimeMs = runTestsCudaIndividual(
                     stream, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr, uploadDataCallback);
@@ -163,6 +175,16 @@ void runTestsCuda(CUdevice cuDevice) {
         }
         {
             errorCheckCuda(cudaMallocHost(reinterpret_cast<void**>(&ptrSrc), sizeInBytes), "cudaMallocHost");
+            /*
+             * cudaHostGetDevicePointer is not needed for devices with the attribute
+             * cudaDevAttrCanUseHostPointerForRegisteredMem.
+             *
+             * It is unclear whether cudaMallocHost is OK to use. According to
+             * https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html, cudaHostAlloc is equivalent
+             * to cudaMallocHost without any flags, and the flag cudaHostAllocMapped is needed for
+             * cudaHostGetDevicePointer. For this, the cudaDeviceMapHost flag needs to be set (can be checked via
+             * cudaGetDeviceFlags).
+             */
             float* ptrSrcDevice = nullptr;
             errorCheckCuda(cudaHostGetDevicePointer(
                     reinterpret_cast<void**>(&ptrSrcDevice), ptrSrc, 0), "cudaHostGetDevicePointer");

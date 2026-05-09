@@ -88,17 +88,17 @@ Tested API: CUDA
 #Accesses: 1
 Time copy cudaMalloc: 43.4185ms
 Time copy cudaMallocManaged: 386.792ms
-Time copy cudaMallocManaged2: 238.621ms
+Time copy cudaMallocManaged2: 48.1439ms
 Time copy cudaMallocHost: 73.2223ms
 #Accesses: 10
 Time copy cudaMalloc: 5.63693ms
 Time copy cudaMallocManaged: 38.8158ms
-Time copy cudaMallocManaged2: 25.2372ms
+Time copy cudaMallocManaged2: 5.93454ms
 Time copy cudaMallocHost: 45.3252ms
 #Accesses: 100
 Time copy cudaMalloc: 1.72966ms
 Time copy cudaMallocManaged: 5.1667ms
-Time copy cudaMallocManaged2: 3.703ms
+Time copy cudaMallocManaged2: 1.77026ms
 Time copy cudaMallocHost: 42.5057ms
 
 No HIP device detected
@@ -119,7 +119,5 @@ Time copy malloc_host: 42.3978ms
 ```
 
 Interesting outcomes:
-- When comparing performance of CUDA and SYCL, `cudaMalloc` and `malloc_device` are comparably fast,
-  while `malloc_shared` is faster than its CUDA equivalents.
 - Vulkan cannot reach performance of CUDA and SYCL with device local memory, even for a large amount of iterations.
 - Vulkan has a significant overhead for single-access patterns.
