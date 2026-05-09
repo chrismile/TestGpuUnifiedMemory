@@ -170,6 +170,7 @@ void runTests(sgl::vk::Device*& device) {
         // Set the selected CUDA driver API device in the runtime API.
         setCudaDevice(cuDevice);
         runTestsCuda(cuDevice, checkMemoryContentCallback);
+    }
 #endif
 
 #ifdef SUPPORT_HIP
@@ -187,9 +188,8 @@ void runTests(sgl::vk::Device*& device) {
 #endif
 
 #ifdef SUPPORT_SYCL
-        runTestsSycl(device->getDeviceIDProperties().deviceUUID, checkMemoryContentCallback);
+    runTestsSycl(device->getDeviceIDProperties().deviceUUID, checkMemoryContentCallback);
 #endif
-    }
 }
 
 int main() {
