@@ -122,8 +122,6 @@ void runTestsVulkan(sgl::vk::Device* device) {
     auto shaderStages = shaderManager->compileComputeShaderFromStringCached(
             "CopyImageToBufferShader.Compute", SHADER_STRING_COPY_BUFFER_COMPUTE_FMT);
 
-    // Buffer size: 128 MiB
-    const uint32_t numElements = 128 * 1024 * 1024;
     const size_t sizeInBytes = numElements * sizeof(float);
 
     sgl::vk::BufferSettings bufferSettings{};

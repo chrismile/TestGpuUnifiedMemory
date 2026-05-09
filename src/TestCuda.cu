@@ -110,8 +110,6 @@ void runTestsCuda(CUdevice cuDevice) {
     cudaStream_t stream{};
     errorCheckCuda(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking), "cudaStreamCreateWithFlags");
 
-    // Buffer size: 128 MiB
-    const uint32_t numElements = 128 * 1024 * 1024;
     const size_t sizeInBytes = numElements * sizeof(float);
 
     float* ptrSrc = nullptr;

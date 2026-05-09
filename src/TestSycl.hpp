@@ -26,18 +26,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TESTGPUUNIFIEDMEMORY_COMMON_HPP
-#define TESTGPUUNIFIEDMEMORY_COMMON_HPP
+#ifndef TESTGPUUNIFIEDMEMORY_TESTSYCL_HPP
+#define TESTGPUUNIFIEDMEMORY_TESTSYCL_HPP
 
-#include <string>
 #include <cstdint>
 
-// Checks whether the entries in the passed pointer are linearly increasing.
-bool checkIsArrayLinear(size_t numEntries, const void* ptr, std::string& errorMessage);
+DLL_OBJECT_SYCL void runTestsSycl(const uint8_t* deviceUuid, void (*checkMemoryContentCallback)(const void* hostPtr));
 
-// Buffer size: 128 MiB
-constexpr uint32_t numElements = 128 * 1024 * 1024;
-
-constexpr int numCopiesPerRunConfigs[3] = { 1, 10, 100 };
-
-#endif //TESTGPUUNIFIEDMEMORY_COMMON_HPP
+#endif //TESTGPUUNIFIEDMEMORY_TESTSYCL_HPP

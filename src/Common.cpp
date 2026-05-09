@@ -29,8 +29,8 @@
 #include "Common.hpp"
 
 // Checks whether the entries in the passed pointer are linearly increasing.
-bool checkIsArrayLinear(size_t numEntries, void* ptr, std::string& errorMessage) {
-    auto* hostPtr = static_cast<float*>(ptr);
+bool checkIsArrayLinear(size_t numEntries, const void* ptr, std::string& errorMessage) {
+    auto* hostPtr = static_cast<const float*>(ptr);
     for (size_t i = 0; i < numEntries; i++) {
         if (hostPtr[i] != static_cast<float>(i)) {
             errorMessage = "Image content mismatch at i=" + std::to_string(i);

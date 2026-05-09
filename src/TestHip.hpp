@@ -26,18 +26,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TESTGPUUNIFIEDMEMORY_COMMON_HPP
-#define TESTGPUUNIFIEDMEMORY_COMMON_HPP
+#ifndef TESTGPUUNIFIEDMEMORY_TESTHIP_HPP
+#define TESTGPUUNIFIEDMEMORY_TESTHIP_HPP
 
-#include <string>
-#include <cstdint>
+#include <hip/hip_runtime.h>
 
-// Checks whether the entries in the passed pointer are linearly increasing.
-bool checkIsArrayLinear(size_t numEntries, const void* ptr, std::string& errorMessage);
+DLL_OBJECT_HIP void _checkHipResult(hipError_t hipResult, const char* text, const char* locationText);
+#define checkHipResult(hipResult, text) _checkHipResult(hipResult, text, __FILE__ ":" TOSTRING(__LINE__))
 
-// Buffer size: 128 MiB
-constexpr uint32_t numElements = 128 * 1024 * 1024;
+DLL_OBJECT_HIP bool getIsHipRuntimeApiInitialized();
+DLL_OBJECT_HIP void setHipDevice(hipDevice_t hipDevice);
+DLL_OBJECT_HIP void runTestsHip(hipDevice_t hipDevice);
 
-constexpr int numCopiesPerRunConfigs[3] = { 1, 10, 100 };
-
-#endif //TESTGPUUNIFIEDMEMORY_COMMON_HPP
+#endif //TESTGPUUNIFIEDMEMORY_TESTHIP_HPP

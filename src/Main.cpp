@@ -40,8 +40,15 @@
 #include <Graphics/Vulkan/Utils/InteropCuda.hpp>
 #endif
 
+#include "Common.hpp"
+#include "TestHip.hpp"
 #include "TestVulkan.hpp"
+#ifdef SUPPORT_CUDA
 #include "TestCuda.hpp"
+#endif
+#ifdef SUPPORT_SYCL
+#include "TestSycl.hpp"
+#endif
 
 #ifdef SUPPORT_CUDA
 static bool isCudaInitialized = false;
@@ -51,11 +58,95 @@ void vulkanErrorCallbackHeadless() {
     std::cerr << "Application callback" << std::endl;
 }
 
+void checkMemoryContentCallback(const void* hostPtr) {
+    std::string errorMessage;
+    if (!checkIsArrayLinear(numElements, hostPtr, errorMessage)) {
+        sgl::Logfile::get()->throwError("Memory content mismatched.");
+    }
+}
+
+#ifdef SUPPORT_HIP
+bool getMatchingHipDevice(sgl::vk::Device* device, hipDevice_t* hipDevice) {
+    const VkPhysicalDeviceIDProperties& deviceIdProperties = device->getDeviceIDProperties();
+    bool foundDevice = false;
+
+    int numDevices = 0;
+    hipError_t hipResult = hipGetDeviceCount(&numDevices);
+    if (hipResult == hipErrorNoDevice) {
+        std::cout << "No HIP device detected" << std::endl << std::endl;
+        return false;
+    }
+    checkHipResult(hipResult, "Error in hipGetDeviceCount: ");
+
+    for (int deviceIdx = 0; deviceIdx < numDevices; deviceIdx++) {
+        hipDevice_t currDevice = 0;
+        hipResult = hipDeviceGet(&currDevice, deviceIdx);
+        checkHipResult(hipResult, "Error in hipDeviceGet: ");
+
+        hipUUID currUuid = {};
+        hipResult = hipDeviceGetUuid(&currUuid, currDevice);
+        checkHipResult(hipResult, "Error in hipDeviceGetUuid: ");
+
+        bool isSameUuid = true;
+        for (int i = 0; i < 16; i++) {
+            if (deviceIdProperties.deviceUUID[i] != reinterpret_cast<uint8_t*>(&currUuid.bytes)[i]) {
+                isSameUuid = false;
+                break;
+            }
+        }
+        if (isSameUuid) {
+            foundDevice = true;
+            *hipDevice = currDevice;
+            break;
+        }
+    }
+
+    /*
+     * hipDeviceGetUuid is not compatible with VkPhysicalDeviceIDProperties::deviceUUID:
+     * https://github.com/ROCm/hipamd/issues/50
+     * Use some reasonable fallback when no device could be matched.
+     */
+    if (!foundDevice) {
+        if (device->getDeviceDriverId() != VK_DRIVER_ID_AMD_PROPRIETARY
+                && device->getDeviceDriverId() != VK_DRIVER_ID_AMD_OPEN_SOURCE
+                && device->getDeviceDriverId() != VK_DRIVER_ID_MESA_RADV) {
+            return false;
+        }
+        if (numDevices == 1) {
+            hipDevice_t currDevice = 0;
+            hipResult = hipDeviceGet(&currDevice, 0);
+            checkHipResult(hipResult, "Error in hipDeviceGet: ");
+            foundDevice = true;
+            *hipDevice = currDevice;
+        } else {
+            char deviceName[256];
+            for (int deviceIdx = 0; deviceIdx < numDevices; deviceIdx++) {
+                hipDevice_t currDevice = 0;
+                hipResult = hipDeviceGet(&currDevice, deviceIdx);
+                checkHipResult(hipResult, "Error in hipDeviceGet: ");
+
+                memset(deviceName, 0, sizeof(deviceName));
+                hipResult = hipDeviceGetName(deviceName, 255, currDevice);
+                checkHipResult(hipResult, "Error in hipDeviceGetUuid: ");
+
+                if (strcmp(device->getDeviceName(), deviceName) == 0) {
+                    foundDevice = true;
+                    *hipDevice = currDevice;
+                }
+            }
+        }
+    }
+
+    return foundDevice;
+}
+#endif
+
 void runTests(sgl::vk::Device*& device) {
     std::cout << "Running on " << device->getDeviceName() << std::endl;
 
     runTestsVulkan(device);
 
+#ifdef SUPPORT_CUDA
     if (device->getDeviceDriverId() == VK_DRIVER_ID_NVIDIA_PROPRIETARY) {
         // Choose a CUDA device matching the Vulkan device using the CUDA driver API.
         if (!isCudaInitialized) {
@@ -77,6 +168,25 @@ void runTests(sgl::vk::Device*& device) {
         // Set the selected CUDA driver API device in the runtime API.
         setCudaDevice(cuDevice);
         runTestsCuda(cuDevice);
+#endif
+
+#ifdef SUPPORT_HIP
+    if (device->getDeviceDriverId() == VK_DRIVER_ID_NVIDIA_PROPRIETARY
+            || device->getDeviceDriverId() == VK_DRIVER_ID_MESA_NVK
+            || device->getDeviceDriverId() == VK_DRIVER_ID_MESA_RADV
+            || device->getDeviceDriverId() == VK_DRIVER_ID_AMD_OPEN_SOURCE
+            || device->getDeviceDriverId() == VK_DRIVER_ID_AMD_PROPRIETARY) {
+        hipDevice_t hipDevice;
+        if (getMatchingHipDevice(device, &hipDevice)) {
+            setHipDevice(hipDevice);
+            runTestsHip(hipDevice);
+        }
+    }
+#endif
+
+#ifdef SUPPORT_SYCL
+        runTestsSycl(device->getDeviceIDProperties().deviceUUID, checkMemoryContentCallback);
+#endif
     }
 }
 
