@@ -41,10 +41,12 @@
 #endif
 
 #include "Common.hpp"
-#include "TestHip.hpp"
 #include "TestVulkan.hpp"
 #ifdef SUPPORT_CUDA
 #include "TestCuda.hpp"
+#endif
+#ifdef SUPPORT_HIP
+#include "TestHip.hpp"
 #endif
 #ifdef SUPPORT_SYCL
 #include "TestSycl.hpp"
@@ -167,7 +169,7 @@ void runTests(sgl::vk::Device*& device) {
 
         // Set the selected CUDA driver API device in the runtime API.
         setCudaDevice(cuDevice);
-        runTestsCuda(cuDevice);
+        runTestsCuda(cuDevice, checkMemoryContentCallback);
 #endif
 
 #ifdef SUPPORT_HIP
@@ -179,7 +181,7 @@ void runTests(sgl::vk::Device*& device) {
         hipDevice_t hipDevice;
         if (getMatchingHipDevice(device, &hipDevice)) {
             setHipDevice(hipDevice);
-            runTestsHip(hipDevice);
+            runTestsHip(hipDevice, checkMemoryContentCallback);
         }
     }
 #endif

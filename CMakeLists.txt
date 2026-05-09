@@ -36,7 +36,7 @@ if(${CUDAToolkit_FOUND})
 endif()
 
 if (NOT (MSYS OR MINGW OR (${CMAKE_GENERATOR} STREQUAL "MinGW Makefiles") OR (${CMAKE_GENERATOR} STREQUAL "MSYS Makefiles")))
-    find_package(hip REQUIRED)
+    find_package(hip QUIET)
 endif()
 if(${hip_FOUND})
     MESSAGE(STATUS "Found HIP SDK ${hip_VERSION}")

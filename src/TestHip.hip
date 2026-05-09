@@ -33,7 +33,6 @@
 #include <chrono>
 
 #include <Math/Math.hpp>
-#include <Utils/File/Logfile.hpp>
 
 #include "Common.hpp"
 #include "TestHip.hpp"
@@ -45,14 +44,14 @@ static bool isHipRuntimeApiInitialized = false;
 static void errorCheckHip(hipError_t hipError, const char* name) {
     if (hipError != hipSuccess) {
         throw std::runtime_error(
-            std::string() + "HIP error (" + std::to_string(int(hipError)) + ") in " + name + ": "
-            + hipGetErrorString(hipError));
+                std::string() + "HIP error (" + std::to_string(int(hipError)) + ") in " + name + ": "
+                + hipGetErrorString(hipError));
     }
 }
 void _checkHipResult(hipError_t hipResult, const char* text, const char* locationText) {
     if (hipResult != hipSuccess) {
         const char* errorString = hipGetErrorString(hipResult);
-        sgl::Logfile::get()->throwError(std::string() + locationText + ": " + text + errorString);
+        throw std::runtime_error(std::string() + locationText + ": " + text + errorString);
     }
 }
 
@@ -77,7 +76,7 @@ __global__ void copyBufferKernel(uint32_t numElements, const float* __restrict__
 
 double runTestsHipIndividual(
         hipStream_t stream, int numCopiesPerRun, uint32_t numElements, float* ptrSrc, float* ptrDst, float* hostPtr,
-        const std::function<void()>& uploadDataCallback) {
+        const std::function<void()>& uploadDataCallback, void (*checkMemoryContentCallback)(const void* hostPtr)) {
     dim3 blockDim(256, 1, 1);
     dim3 gridDim(sgl::uiceil(numElements, blockDim.x), 1, 1);
 
@@ -103,17 +102,18 @@ double runTestsHipIndividual(
         errorCheckHip(hipStreamSynchronize(stream), "hipStreamSynchronize");
 
         // Check equality to expected values.
-        if (!checkIsArrayLinear(numElements, hostPtr, errorMessage)) {
-            sgl::Logfile::get()->throwError("Memory content mismatched.");
-        }
+        checkMemoryContentCallback(hostPtr);
     }
 
     return elapsedTimeMs;
 }
 
-void runTestsHip(hipDevice_t hipDevice) {
+void runTestsHip(hipDevice_t hipDevice, void (*checkMemoryContentCallback)(const void* hostPtr)) {
     hipStream_t stream{};
     errorCheckHip(hipStreamCreateWithFlags(&stream, hipStreamNonBlocking), "hipStreamCreateWithFlags");
+
+    hipDeviceProp_t deviceProp{};
+    errorCheckHip(hipGetDeviceProperties(&deviceProp, hipDevice), "hipGetDeviceProperties");
 
     const size_t sizeInBytes = numElements * sizeof(float);
 
@@ -138,7 +138,8 @@ void runTestsHip(hipDevice_t hipDevice) {
                         ptrSrc, bufferHost, sizeInBytes, hipMemcpyHostToDevice, stream), "hipMemcpyAsync");
             };
             double elapsedTimeMs = runTestsHipIndividual(
-                    stream, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr, uploadDataCallback);
+                    stream, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr,
+                    uploadDataCallback, checkMemoryContentCallback);
             errorCheckHip(hipFree(ptrSrc), "hipFree");
             std::cout << "  Time copy hipMalloc: " << elapsedTimeMs << "ms" << std::endl;
         }
@@ -148,7 +149,8 @@ void runTestsHip(hipDevice_t hipDevice) {
                 memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
             double elapsedTimeMs = runTestsHipIndividual(
-                    stream, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr, uploadDataCallback);
+                    stream, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr,
+                    uploadDataCallback, checkMemoryContentCallback);
             errorCheckHip(hipFree(ptrSrc), "hipFree");
             std::cout << "  Time copy hipMallocManaged: " << elapsedTimeMs << "ms" << std::endl;
         }
@@ -158,11 +160,16 @@ void runTestsHip(hipDevice_t hipDevice) {
             //errorCheckHip(hipMemAdvise(ptrSrc, sizeInBytes, hipMemAdviseSetReadMostly, hipMemLocationTypeDevice), "hipMemPrefetchAsync");
             auto uploadDataCallback = [&]() {
                 errorCheckHip(hipMemcpyAsync(
-                        ptrSrc, bufferHost, sizeInBytes, hipMemcpyHostToHost, stream), "hipMemcpyAsync");
-                errorCheckHip(hipMemPrefetchAsync_v2(ptrSrc, sizeInBytes, hipMemLocation{hipMemLocationTypeDevice, hipDevice}, 0, stream), "hipMemPrefetchAsync");
+                        ptrSrc, bufferHost, sizeInBytes, hipMemcpyHostToDevice, stream), "hipMemcpyAsync");
+                if (deviceProp.concurrentManagedAccess) {
+                    errorCheckHip(hipMemPrefetchAsync_v2(
+                            ptrSrc, sizeInBytes, hipMemLocation{hipMemLocationTypeDevice, hipDevice}, 0,
+                            stream), "hipMemPrefetchAsync");
+                }
             };
             double elapsedTimeMs = runTestsHipIndividual(
-                    stream, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr, uploadDataCallback);
+                    stream, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr,
+                    uploadDataCallback, checkMemoryContentCallback);
             errorCheckHip(hipFree(ptrSrc), "hipFree");
             std::cout << "  Time copy hipMallocManaged2: " << elapsedTimeMs << "ms" << std::endl;
         }
@@ -175,7 +182,8 @@ void runTestsHip(hipDevice_t hipDevice) {
                 memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
             double elapsedTimeMs = runTestsHipIndividual(
-                    stream, numCopiesPerRun, numElements, ptrSrcDevice, ptrDst, hostPtr, uploadDataCallback);
+                    stream, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr,
+                    uploadDataCallback, checkMemoryContentCallback);
             errorCheckHip(hipFreeHost(ptrSrc), "hipFreeHost");
             std::cout << "  Time copy hipHostMalloc: " << elapsedTimeMs << "ms" << std::endl;
         }

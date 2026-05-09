@@ -36,6 +36,6 @@ DLL_OBJECT_HIP void _checkHipResult(hipError_t hipResult, const char* text, cons
 
 DLL_OBJECT_HIP bool getIsHipRuntimeApiInitialized();
 DLL_OBJECT_HIP void setHipDevice(hipDevice_t hipDevice);
-DLL_OBJECT_HIP void runTestsHip(hipDevice_t hipDevice);
+DLL_OBJECT_HIP void runTestsHip(hipDevice_t hipDevice, void (*checkMemoryContentCallback)(const void* hostPtr));
 
 #endif //TESTGPUUNIFIEDMEMORY_TESTHIP_HPP

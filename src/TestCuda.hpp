@@ -33,6 +33,6 @@
 
 DLL_OBJECT_CUDA bool getIsCudaRuntimeApiInitialized();
 DLL_OBJECT_CUDA void setCudaDevice(CUdevice cuDevice);
-DLL_OBJECT_CUDA void runTestsCuda(CUdevice cuDevice);
+DLL_OBJECT_CUDA void runTestsCuda(CUdevice cuDevice, void (*checkMemoryContentCallback)(const void* hostPtr));
 
 #endif //SGL_CUDADEVICECODE_HPP
