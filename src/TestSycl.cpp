@@ -48,15 +48,24 @@ sycl::event copyBufferKernel(
 }
 
 double runTestsSyclIndividual(
-        sycl::queue& syclQueue, int numCopiesPerRun, uint32_t numElements, float* ptrSrc, float* ptrDst, float* hostPtr,
+        sycl::queue& syclQueue, int numCopiesPerRun, bool measureUpload,
+        int32_t numElements, float* ptrSrc, float* ptrDst, float* hostPtr,
         const std::function<sycl::event()>& uploadDataCallback, void (*checkMemoryContentCallback)(const void* hostPtr)) {
     const int numRuns = numCopiesPerRun <= 1 ? 10 : 1;
 
     double elapsedTimeMs = 0.0;
     std::string errorMessage;
     for (int it = 0; it < numRuns + 1; it++) {
+        if (!measureUpload) {
+            sycl::event uploadDataEvent = uploadDataCallback();
+            uploadDataEvent.wait_and_throw();
+        }
+
         auto timeStart = std::chrono::high_resolution_clock::now();
-        sycl::event dispatchKernelEvent = uploadDataCallback();
+        sycl::event dispatchKernelEvent;
+        if (measureUpload) {
+            dispatchKernelEvent = uploadDataCallback();
+        }
         for (int copyIdx = 0; copyIdx < numCopiesPerRun; copyIdx++) {
             dispatchKernelEvent = copyBufferKernel(syclQueue, numElements, ptrSrc, ptrDst, dispatchKernelEvent);
         }
@@ -112,15 +121,21 @@ void runTestsSycl(const uint8_t* deviceUuid, void (*checkMemoryContentCallback)(
     }
 
     std::cout << "Tested API: SYCL" << std::endl;
-    for (int numCopiesPerRun : numCopiesPerRunConfigs) {
-        std::cout << " #Accesses: " << numCopiesPerRun << std::endl;
+    for (int configIdx = 0; configIdx < NUM_CONFIGS; configIdx++) {
+        int numCopiesPerRun = configsNumCopiesPerRun[configIdx];
+        bool measureUpload = configsMeasureUpload[configIdx];
+        std::cout << " #Accesses: " << numCopiesPerRun;
+        if (!measureUpload) {
+            std::cout << " (upload excluded)";
+        }
+        std::cout << std::endl;
         {
             ptrSrc = sycl::malloc_device<float>(numElements, syclQueue);
             auto uploadDataCallback = [&]() -> sycl::event {
                 return syclQueue.memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
             double elapsedTimeMs = runTestsSyclIndividual(
-                    syclQueue, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr,
+                    syclQueue, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             sycl::free(ptrSrc, syclQueue);
             std::cout << "  Time copy malloc_device: " << elapsedTimeMs << "ms" << std::endl;
@@ -131,7 +146,7 @@ void runTestsSycl(const uint8_t* deviceUuid, void (*checkMemoryContentCallback)(
                 return syclQueue.memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
             double elapsedTimeMs = runTestsSyclIndividual(
-                    syclQueue, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr,
+                    syclQueue, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             sycl::free(ptrSrc, syclQueue);
             std::cout << "  Time copy malloc_shared: " << elapsedTimeMs << "ms" << std::endl;
@@ -142,7 +157,7 @@ void runTestsSycl(const uint8_t* deviceUuid, void (*checkMemoryContentCallback)(
                 return syclQueue.memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
             double elapsedTimeMs = runTestsSyclIndividual(
-                    syclQueue, numCopiesPerRun, numElements, ptrSrc, ptrDst, hostPtr,
+                    syclQueue, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             sycl::free(ptrSrc, syclQueue);
             std::cout << "  Time copy malloc_host: " << elapsedTimeMs << "ms" << std::endl;

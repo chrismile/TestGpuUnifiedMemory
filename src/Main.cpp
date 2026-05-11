@@ -205,6 +205,7 @@ int main() {
 
     sgl::vk::DeviceFeatures requestedDeviceFeatures{};
     std::vector<const char*> requiredDeviceExtensions = { VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME };
+    std::vector<const char*> optionalDeviceExtensions = { VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME };
 
     std::vector<VkPhysicalDevice> physicalDevices = sgl::vk::enumeratePhysicalDevices(instance);
     std::vector<VkPhysicalDevice> suitablePhysicalDevices;
@@ -226,7 +227,8 @@ int main() {
         auto physicalDevice = suitablePhysicalDevices.at(i);
         auto* device = new sgl::vk::Device;
         device->createDeviceHeadlessFromPhysicalDevice(
-                instance, physicalDevice, requiredDeviceExtensions, {}, requestedDeviceFeatures, false);
+                instance, physicalDevice, requiredDeviceExtensions, optionalDeviceExtensions,
+                requestedDeviceFeatures, false);
         runTests(device);
         delete device;
     }

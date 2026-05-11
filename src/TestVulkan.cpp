@@ -30,6 +30,7 @@
 #include <chrono>
 
 #include <Math/Math.hpp>
+#include <Utils/Memory.hpp>
 #include <Utils/File/Logfile.hpp>
 #include <Graphics/Vulkan/Shader/ShaderManager.hpp>
 #include <Graphics/Vulkan/Render/Renderer.hpp>
@@ -42,29 +43,32 @@
 #include "TestVulkan.hpp"
 
 double runTestsVulkanIndividual(
-        int numCopiesPerRun,
+        int numCopiesPerRun, bool measureUpload,
         sgl::vk::Renderer* renderer, const sgl::vk::FencePtr& fence, const sgl::vk::CommandBufferPtr& commandBuffer,
-        const sgl::vk::ComputeDataPtr& computeData, uint32_t numElements, const std::function<void()>& uploadDataCallback,
+        const sgl::vk::ComputeDataPtr& computeData, uint32_t numElements,
+        const std::function<void(VkCommandBuffer)>& uploadDataCallback,
         const sgl::vk::BufferPtr& bufferDst, const sgl::vk::BufferPtr& stagingBuffer) {
     const int numRuns = numCopiesPerRun <= 1 ? 10 : 1;
 
     double elapsedTimeMs = 0.0;
     std::string errorMessage;
     for (int it = 0; it < numRuns + 1; it++) {
+        if (!measureUpload) {
+            VkCommandBuffer commandBufferTmp = renderer->getDevice()->beginSingleTimeCommands();
+            uploadDataCallback(commandBufferTmp);
+            renderer->getDevice()->endSingleTimeCommands(commandBufferTmp);
+        }
+
         auto timeStart = std::chrono::high_resolution_clock::now();
-        uploadDataCallback();
         renderer->pushCommandBuffer(commandBuffer);
         commandBuffer->setFence(fence);
         renderer->beginCommandBuffer();
+        if (measureUpload) {
+            uploadDataCallback(commandBuffer->getVkCommandBuffer());
+        }
         for (int copyIdx = 0; copyIdx < numCopiesPerRun; copyIdx++) {
             renderer->dispatch(computeData, sgl::uiceil(numElements, 256u), 1, 1);
-            if (copyIdx == numCopiesPerRun - 1) {
-                renderer->insertBufferMemoryBarrier(
-                        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                        bufferDst);
-                bufferDst->copyDataTo(stagingBuffer, commandBuffer->getVkCommandBuffer());
-            } else {
+            if (copyIdx < numCopiesPerRun - 1) {
                 renderer->insertBufferMemoryBarrier(
                         VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_WRITE_BIT,
                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -135,6 +139,7 @@ void runTestsVulkan(sgl::vk::Device* device) {
     bufferSettings.memoryUsage = VMA_MEMORY_USAGE_GPU_TO_CPU;
     bufferSettings.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     auto stagingBuffer = std::make_shared<sgl::vk::Buffer>(device, bufferSettings);
+    sgl::vk::BufferPtr stagingBufferUpload;
 
     // Create command buffer.
     sgl::vk::CommandPoolType commandPoolType;
@@ -149,7 +154,14 @@ void runTestsVulkan(sgl::vk::Device* device) {
     computeData->setStaticBuffer(uniformBuffer, 0);
     computeData->setStaticBuffer(bufferDst, 2);
 
-    auto* bufferHost = new float[numElements];
+    bool testHostPointerImport = device->isDeviceExtensionSupported(VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME);
+    sgl::vk::BufferPtr bufferSrcHost;
+    float* bufferHost;
+    if (testHostPointerImport) {
+        bufferHost = static_cast<float*>(sgl::aligned_alloc(device->getMinImportedHostPointerAlignment(), sizeInBytes));
+    } else {
+        bufferHost = new float[numElements];
+    }
     for (uint32_t i = 0; i < numElements; i++) {
         bufferHost[i] = static_cast<float>(i);
     }
@@ -171,9 +183,16 @@ void runTestsVulkan(sgl::vk::Device* device) {
         { VK_MEMORY_PROPERTY_RDMA_CAPABLE_BIT_NV, "RDMA capable" },
     };
     std::cout << "Tested API: Vulkan" << std::endl;
-    for (int numCopiesPerRun : numCopiesPerRunConfigs) {
-        std::cout << " #Accesses: " << numCopiesPerRun << std::endl;
-        for (uint32_t memoryTypeIdx = 0; memoryTypeIdx < memoryProperties.memoryTypeCount; memoryTypeIdx++) {
+    bool testHostPtrImportNext = false;
+    for (int configIdx = 0; configIdx < NUM_CONFIGS; configIdx++) {
+        int numCopiesPerRun = configsNumCopiesPerRun[configIdx];
+        bool measureUpload = configsMeasureUpload[configIdx];
+        std::cout << " #Accesses: " << numCopiesPerRun;
+        if (!measureUpload) {
+            std::cout << " (upload excluded)";
+        }
+        std::cout << std::endl;
+        for (uint32_t memoryTypeIdx = 0; memoryTypeIdx < memoryProperties.memoryTypeCount; ) {
             const VkMemoryType& memoryType = memoryProperties.memoryTypes[memoryTypeIdx];
             std::string memoryTypeString;
             if (memoryType.propertyFlags != 0) {
@@ -189,34 +208,59 @@ void runTestsVulkan(sgl::vk::Device* device) {
                         entryIdx++;
                     }
                 }
+                if (testHostPtrImportNext) {
+                    memoryTypeString += "; host pointer import";
+                }
                 memoryTypeString += ")";
             }
 
             //if ((memoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == 0) {
+            //    memoryTypeIdx++;
             //    continue;
             //}
             uint32_t memoryTypeBits = 1u << memoryTypeIdx;
             VkMemoryRequirements memoryRequirements{};
             if (!device->getBufferSettingsMemoryRequirements(bufferSettings, memoryRequirements)
                     || (memoryRequirements.memoryTypeBits & memoryTypeBits) == 0) {
+                memoryTypeIdx++;
                 continue;
             }
             bufferSettings.useMemoryTypeBits = true;
             bufferSettings.memoryTypeBits = memoryTypeBits;
             auto bufferSrc = std::make_shared<sgl::vk::Buffer>(device, bufferSettings);
             computeData->setStaticBuffer(bufferSrc, 1);
-            auto uploadDataCallback = [&]() {
-                bufferSrc->uploadData(sizeInBytes, bufferHost);
+            auto uploadDataCallback = [&](VkCommandBuffer commandBufferVk) {
+                if (testHostPtrImportNext) {
+                    bufferSrcHost = std::make_shared<sgl::vk::Buffer>(device);
+                    bufferSrcHost->createFromHostPointer(bufferHost, sizeInBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+                    bufferSrcHost->copyDataTo(bufferSrc, commandBufferVk);
+                } else {
+                    bufferSrc->uploadData(sizeInBytes, bufferHost, commandBufferVk, stagingBufferUpload);
+                }
             };
             double elapsedTimeUs = runTestsVulkanIndividual(
-                    numCopiesPerRun, renderer, fence, commandBuffer, computeData, numElements, uploadDataCallback,
-                    bufferDst, stagingBuffer);
+                    numCopiesPerRun, measureUpload, renderer, fence, commandBuffer, computeData, numElements,
+                    uploadDataCallback, bufferDst, stagingBuffer);
             std::cout << "  Time copy memory type " << memoryTypeIdx << memoryTypeString << ": " << elapsedTimeUs << "ms" << std::endl;
+
+            if (testHostPtrImportNext) {
+                testHostPtrImportNext = false;
+                memoryTypeIdx++;
+            } else if (testHostPointerImport && (memoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0
+                    && (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == 0) {
+                testHostPtrImportNext = true;
+            } else {
+                memoryTypeIdx++;
+            }
         }
     }
     std::cout << std::endl;
 
-    delete[] bufferHost;
+    if (testHostPointerImport) {
+        sgl::aligned_free(bufferHost);
+    } else {
+        delete[] bufferHost;
+    }
     shaderStages.reset();
     computeData.reset();
     delete renderer;
