@@ -206,10 +206,116 @@ Tested API: SYCL
 
 ```
 Running on Intel(R) Iris(R) Xe Graphics
-TODO
+Tested API: Vulkan
+ #Accesses: 1
+  Time copy memory type 0 (device local): 151.074ms
+  Time copy memory type 0 (device local; host pointer import): 61.4366ms
+  Time copy memory type 1 (device local, host visible, host coherent): 53.1082ms
+  Time copy memory type 2 (device local, host visible, host coherent, host cached): 53.5825ms
+ #Accesses: 10
+  Time copy memory type 0 (device local): 32.5721ms
+  Time copy memory type 0 (device local; host pointer import): 23.4785ms
+  Time copy memory type 1 (device local, host visible, host coherent): 22.4417ms
+  Time copy memory type 2 (device local, host visible, host coherent, host cached): 22.509ms
+ #Accesses: 100
+  Time copy memory type 0 (device local): 20.1095ms
+  Time copy memory type 0 (device local; host pointer import): 19.4957ms
+  Time copy memory type 1 (device local, host visible, host coherent): 20.9516ms
+  Time copy memory type 2 (device local, host visible, host coherent, host cached): 19.3482ms
+ #Accesses: 100 (upload excluded)
+  Time copy memory type 0 (device local): 19.1371ms
+  Time copy memory type 0 (device local; host pointer import): 19.1376ms
+  Time copy memory type 1 (device local, host visible, host coherent): 19.1536ms
+  Time copy memory type 2 (device local, host visible, host coherent, host cached): 19.0192ms
+
+Tested API: SYCL
+ #Accesses: 1
+  Time copy malloc_device: 38.7907ms
+  Time copy malloc_shared: 37.6332ms
+  Time copy malloc_host: 37.7336ms
+ #Accesses: 10
+  Time copy malloc_device: 20.7954ms
+  Time copy malloc_shared: 20.7207ms
+  Time copy malloc_host: 20.8774ms
+ #Accesses: 100
+  Time copy malloc_device: 19.1684ms
+  Time copy malloc_shared: 19.1305ms
+  Time copy malloc_host: 19.0843ms
+ #Accesses: 100 (upload excluded)
+  Time copy malloc_device: 18.8917ms
+  Time copy malloc_shared: 18.988ms
+  Time copy malloc_host: 18.9198ms
 ```
 
 ```
 Running on NVIDIA GeForce RTX 3080 Ti Laptop GPU
-TODO
+Tested API: Vulkan
+ #Accesses: 1
+  Time copy memory type 0: 154.722ms
+  Time copy memory type 1 (device local): 152.954ms
+  Time copy memory type 1 (device local; host pointer import): 68.1271ms
+  Time copy memory type 3 (host visible, host coherent): 76.7863ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 76.825ms
+  Time copy memory type 5 (device local, host visible, host coherent): 61.2005ms
+ #Accesses: 10
+  Time copy memory type 0: 18.1424ms
+  Time copy memory type 1 (device local): 18.7753ms
+  Time copy memory type 1 (device local; host pointer import): 9.03518ms
+  Time copy memory type 3 (host visible, host coherent): 45.0405ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 44.9901ms
+  Time copy memory type 5 (device local, host visible, host coherent): 8.32815ms
+ #Accesses: 100
+  Time copy memory type 0: 4.59708ms
+  Time copy memory type 1 (device local): 4.59004ms
+  Time copy memory type 1 (device local; host pointer import): 3.18353ms
+  Time copy memory type 3 (host visible, host coherent): 42.0226ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 42.0476ms
+  Time copy memory type 5 (device local, host visible, host coherent): 3.56304ms
+ #Accesses: 100 (upload excluded)
+  Time copy memory type 0: 2.89529ms
+  Time copy memory type 1 (device local): 2.98608ms
+  Time copy memory type 1 (device local; host pointer import): 2.53903ms
+  Time copy memory type 3 (host visible, host coherent): 41.6453ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 41.6783ms
+  Time copy memory type 5 (device local, host visible, host coherent): 2.54125ms
+
+Tested API: CUDA
+ #Accesses: 1
+  Time copy cudaMalloc: 55.3302ms
+  Time copy cudaMallocManaged: 4281.01ms
+  Time copy cudaMallocManaged2: 47.0591ms
+  Time copy cudaMallocHost: 75.1908ms
+ #Accesses: 10
+  Time copy cudaMalloc: 7.63122ms
+  Time copy cudaMallocManaged: 421.099ms
+  Time copy cudaMallocManaged2: 7.06152ms
+  Time copy cudaMallocHost: 45.3738ms
+ #Accesses: 100
+  Time copy cudaMalloc: 3.41961ms
+  Time copy cudaMallocManaged: 37.5002ms
+  Time copy cudaMallocManaged2: 3.43911ms
+  Time copy cudaMallocHost: 42.3974ms
+ #Accesses: 100 (upload excluded)
+  Time copy cudaMalloc: 2.54208ms
+  Time copy cudaMallocManaged: 7.45784ms
+  Time copy cudaMallocManaged2: 2.97775ms
+  Time copy cudaMallocHost: 42.1358ms
+
+Tested API: SYCL
+ #Accesses: 1
+  Time copy malloc_device: 44.4029ms
+  Time copy malloc_shared: 44.6814ms
+  Time copy malloc_host: 76.4517ms
+ #Accesses: 10
+  Time copy malloc_device: 7.15753ms
+  Time copy malloc_shared: 7.14263ms
+  Time copy malloc_host: 45.1445ms
+ #Accesses: 100
+  Time copy malloc_device: 3.9883ms
+  Time copy malloc_shared: 3.38912ms
+  Time copy malloc_host: 42.2294ms
+ #Accesses: 100 (upload excluded)
+  Time copy malloc_device: 2.97281ms
+  Time copy malloc_shared: 2.53931ms
+  Time copy malloc_host: 41.9211ms
 ```
