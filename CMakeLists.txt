@@ -51,6 +51,7 @@ endif()
 
 list(APPEND SOURCES_SGL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/sgl/src/Utils/Convert.cpp")
 list(APPEND SOURCES_SGL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/sgl/src/Utils/StringUtils.cpp")
+list(APPEND SOURCES_SGL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/sgl/src/Utils/Format.cpp")
 list(APPEND SOURCES_SGL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/sgl/src/Utils/Env.cpp")
 list(APPEND SOURCES_SGL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/sgl/src/Utils/Dialog.cpp")
 list(APPEND SOURCES_SGL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/sgl/src/Utils/Timer.cpp")

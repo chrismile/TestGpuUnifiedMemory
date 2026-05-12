@@ -36,7 +36,7 @@
 bool checkIsArrayLinear(size_t numEntries, const void* ptr, std::string& errorMessage);
 
 // Buffer size: 128 MiB
-constexpr uint32_t numElements = 128 * 1024 * 1024;
+constexpr uint32_t numElements = 32 * 1024 * 1024;
 
 #define NUM_CONFIGS 4
 constexpr int configsNumCopiesPerRun[4] = { 1, 10, 100, 100 };

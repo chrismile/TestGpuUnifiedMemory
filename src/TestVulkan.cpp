@@ -30,6 +30,7 @@
 #include <chrono>
 
 #include <Math/Math.hpp>
+#include <Utils/Format.hpp>
 #include <Utils/Memory.hpp>
 #include <Utils/File/Logfile.hpp>
 #include <Graphics/Vulkan/Shader/ShaderManager.hpp>
@@ -42,10 +43,12 @@
 #include "Common.hpp"
 #include "TestVulkan.hpp"
 
+constexpr uint32_t WORKGROUP_SIZE = 256u;
+
 double runTestsVulkanIndividual(
         int numCopiesPerRun, bool measureUpload,
         sgl::vk::Renderer* renderer, const sgl::vk::FencePtr& fence, const sgl::vk::CommandBufferPtr& commandBuffer,
-        const sgl::vk::ComputeDataPtr& computeData, uint32_t numElements,
+        const sgl::vk::ComputeDataPtr& computeData, uint32_t numWorkgroups,
         const std::function<void(VkCommandBuffer)>& uploadDataCallback,
         const sgl::vk::BufferPtr& bufferDst, const sgl::vk::BufferPtr& stagingBuffer) {
     const int numRuns = numCopiesPerRun <= 1 ? 10 : 1;
@@ -65,9 +68,12 @@ double runTestsVulkanIndividual(
         renderer->beginCommandBuffer();
         if (measureUpload) {
             uploadDataCallback(commandBuffer->getVkCommandBuffer());
+            renderer->insertMemoryBarrier(
+                    VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
         }
         for (int copyIdx = 0; copyIdx < numCopiesPerRun; copyIdx++) {
-            renderer->dispatch(computeData, sgl::uiceil(numElements, 256u), 1, 1);
+            renderer->dispatch(computeData, numWorkgroups, 1, 1);
             if (copyIdx < numCopiesPerRun - 1) {
                 renderer->insertBufferMemoryBarrier(
                         VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_WRITE_BIT,
@@ -105,9 +111,10 @@ void runTestsVulkan(sgl::vk::Device* device) {
     auto* shaderManager = new sgl::vk::ShaderManagerVk(device);
     auto renderer = new sgl::vk::Renderer(device);
 
-    const char* SHADER_STRING_COPY_BUFFER_COMPUTE_FMT = R"(
+    const char* SHADER_STRING_COPY_BUFFER_COMPUTE_SIMPLE_FMT = R"(
     #version 450 core
-    layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+    #define WORKGROUP_SIZE $0
+    layout(local_size_x = WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
     layout(binding = 0) uniform UniformBuffer {
         uint numElements;
     };
@@ -124,8 +131,46 @@ void runTestsVulkan(sgl::vk::Device* device) {
         }
     }
     )";
+
+    const char* SHADER_STRING_COPY_BUFFER_COMPUTE_LOOP_FMT = R"(
+    #version 450 core
+    #define WORKGROUP_SIZE $0
+    #define NUM_LOOPS $1
+    layout(local_size_x = WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+    layout(binding = 0) uniform UniformBuffer {
+        uint numElements;
+    };
+    layout(binding = 1, std430) restrict readonly buffer SrcBuffer {
+        float srcBuffer[];
+    };
+    layout(binding = 2, std430) writeonly buffer DestBuffer {
+        float destBuffer[];
+    };
+    void main() {
+        uint idx = gl_WorkGroupID.x * gl_WorkGroupSize.x * NUM_LOOPS + gl_LocalInvocationID.x;
+        for (uint loopIdx = 0; loopIdx < NUM_LOOPS; loopIdx++) {
+            if (idx < numElements) {
+                destBuffer[idx] = srcBuffer[idx];
+            }
+            idx += WORKGROUP_SIZE;
+        }
+    }
+    )";
+
+    std::string shaderStringCopyBufferCompute;
+    uint32_t numWorkgroups = sgl::uiceil(numElements, WORKGROUP_SIZE);
+    uint32_t maxNumWorkgroups = device->getLimits().maxComputeWorkGroupCount[0];
+    if (numWorkgroups < maxNumWorkgroups) {
+        shaderStringCopyBufferCompute = sgl::formatStringPositional(
+                SHADER_STRING_COPY_BUFFER_COMPUTE_SIMPLE_FMT, WORKGROUP_SIZE);
+    } else {
+        const uint32_t numLoops = sgl::uiceil(numWorkgroups, maxNumWorkgroups);
+        numWorkgroups = sgl::uiceil(numElements, WORKGROUP_SIZE * numLoops);
+        shaderStringCopyBufferCompute = sgl::formatStringPositional(
+                SHADER_STRING_COPY_BUFFER_COMPUTE_LOOP_FMT, WORKGROUP_SIZE, numLoops);
+    }
     auto shaderStages = shaderManager->compileComputeShaderFromStringCached(
-            "CopyImageToBufferShader.Compute", SHADER_STRING_COPY_BUFFER_COMPUTE_FMT);
+            "CopyImageToBufferShader.Compute", shaderStringCopyBufferCompute);
 
     const size_t sizeInBytes = numElements * sizeof(float);
 
@@ -239,7 +284,7 @@ void runTestsVulkan(sgl::vk::Device* device) {
                 }
             };
             double elapsedTimeUs = runTestsVulkanIndividual(
-                    numCopiesPerRun, measureUpload, renderer, fence, commandBuffer, computeData, numElements,
+                    numCopiesPerRun, measureUpload, renderer, fence, commandBuffer, computeData, numWorkgroups,
                     uploadDataCallback, bufferDst, stagingBuffer);
             std::cout << "  Time copy memory type " << memoryTypeIdx << memoryTypeString << ": " << elapsedTimeUs << "ms" << std::endl;
 

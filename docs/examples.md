@@ -3,6 +3,84 @@
 ## RTX 3090 (Ubuntu 24.04, driver 595.58.03)
 
 ```
+Tested API: Vulkan
+ #Accesses: 1
+  Time copy memory type 0: 95.0647ms
+  Time copy memory type 1 (device local): 81.5425ms
+  Time copy memory type 1 (device local; host pointer import): 35.7759ms
+  Time copy memory type 3 (host visible, host coherent): 18.0757ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 18.1785ms
+  Time copy memory type 5 (device local, host visible, host coherent): 12.3415ms
+ #Accesses: 10
+  Time copy memory type 0: 19.3972ms
+  Time copy memory type 1 (device local): 8.55995ms
+  Time copy memory type 1 (device local; host pointer import): 3.73762ms
+  Time copy memory type 3 (host visible, host coherent): 11.3639ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 11.4815ms
+  Time copy memory type 5 (device local, host visible, host coherent): 1.51335ms
+ #Accesses: 100
+  Time copy memory type 0: 11.3608ms
+  Time copy memory type 1 (device local): 1.13181ms
+  Time copy memory type 1 (device local; host pointer import): 0.667993ms
+  Time copy memory type 3 (host visible, host coherent): 10.5742ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 10.5357ms
+  Time copy memory type 5 (device local, host visible, host coherent): 0.43996ms
+ #Accesses: 100 (upload excluded)
+  Time copy memory type 0: 10.4705ms
+  Time copy memory type 1 (device local): 0.320045ms
+  Time copy memory type 1 (device local; host pointer import): 0.320448ms
+  Time copy memory type 3 (host visible, host coherent): 10.4623ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 10.4694ms
+  Time copy memory type 5 (device local, host visible, host coherent): 0.321045ms
+
+Tested API: CUDA
+ #Accesses: 1
+  Time copy cudaMalloc: 10.9288ms
+  Time copy cudaMallocManaged: 121.715ms
+  Time copy cudaMallocManaged2: 11.9156ms
+  Time copy cudaMallocHost: 17.5422ms
+ #Accesses: 10
+  Time copy cudaMalloc: 1.39011ms
+  Time copy cudaMallocManaged: 13.0424ms
+  Time copy cudaMallocManaged2: 1.48444ms
+  Time copy cudaMallocHost: 11.2858ms
+ #Accesses: 100
+  Time copy cudaMalloc: 0.435943ms
+  Time copy cudaMallocManaged: 1.51968ms
+  Time copy cudaMallocManaged2: 0.4465ms
+  Time copy cudaMallocHost: 10.6081ms
+ #Accesses: 100 (upload excluded)
+  Time copy cudaMalloc: 0.326108ms
+  Time copy cudaMallocManaged: 1.03326ms
+  Time copy cudaMallocManaged2: 0.330267ms
+  Time copy cudaMallocHost: 10.535ms
+
+Tested API: SYCL
+ #Accesses: 1
+  Time copy malloc_device: 10.6607ms
+  Time copy malloc_shared: 10.9709ms
+  Time copy malloc_host: 17.5261ms
+ #Accesses: 10
+  Time copy malloc_device: 1.3557ms
+  Time copy malloc_shared: 1.42527ms
+  Time copy malloc_host: 11.2005ms
+ #Accesses: 100
+  Time copy malloc_device: 0.432429ms
+  Time copy malloc_shared: 0.436729ms
+  Time copy malloc_host: 10.5896ms
+ #Accesses: 100 (upload excluded)
+  Time copy malloc_device: 0.329898ms
+  Time copy malloc_shared: 0.329332ms
+  Time copy malloc_host: 10.5223ms
+```
+
+
+
+# Old data (512 MiB)
+
+## RTX 3090 (Ubuntu 24.04, driver 595.58.03)
+
+```
 Running on NVIDIA GeForce RTX 3090
 Tested API: Vulkan
  #Accesses: 1
