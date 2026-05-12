@@ -1,77 +1,160 @@
-# Example data
+# Example data (128 MiB)
 
 ## RTX 3090 (Ubuntu 24.04, driver 595.58.03)
 
 ```
+Using buffer size 0.125GiB
+Running on NVIDIA GeForce RTX 3090
 Tested API: Vulkan
  #Accesses: 1
-  Time copy memory type 0: 95.0647ms
-  Time copy memory type 1 (device local): 81.5425ms
-  Time copy memory type 1 (device local; host pointer import): 35.7759ms
-  Time copy memory type 3 (host visible, host coherent): 18.0757ms
-  Time copy memory type 4 (host visible, host coherent, host cached): 18.1785ms
-  Time copy memory type 5 (device local, host visible, host coherent): 12.3415ms
+  Time copy memory type 0: 92.736ms
+  Time copy memory type 1 (device local): 80.935ms
+  Time copy memory type 1 (device local; host pointer import): 29.704ms
+  Time copy memory type 3 (host visible, host coherent): 17.146ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 17.572ms
+  Time copy memory type 5 (device local, host visible, host coherent): 12.366ms
  #Accesses: 10
-  Time copy memory type 0: 19.3972ms
-  Time copy memory type 1 (device local): 8.55995ms
-  Time copy memory type 1 (device local; host pointer import): 3.73762ms
-  Time copy memory type 3 (host visible, host coherent): 11.3639ms
-  Time copy memory type 4 (host visible, host coherent, host cached): 11.4815ms
-  Time copy memory type 5 (device local, host visible, host coherent): 1.51335ms
+  Time copy memory type 0: 19.354ms
+  Time copy memory type 1 (device local): 8.391ms
+  Time copy memory type 1 (device local; host pointer import): 3.253ms
+  Time copy memory type 3 (host visible, host coherent): 11.268ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 11.438ms
+  Time copy memory type 5 (device local, host visible, host coherent): 1.555ms
  #Accesses: 100
-  Time copy memory type 0: 11.3608ms
-  Time copy memory type 1 (device local): 1.13181ms
-  Time copy memory type 1 (device local; host pointer import): 0.667993ms
-  Time copy memory type 3 (host visible, host coherent): 10.5742ms
-  Time copy memory type 4 (host visible, host coherent, host cached): 10.5357ms
-  Time copy memory type 5 (device local, host visible, host coherent): 0.43996ms
+  Time copy memory type 0: 11.599ms
+  Time copy memory type 1 (device local): 1.096ms
+  Time copy memory type 1 (device local; host pointer import): 0.605ms
+  Time copy memory type 3 (host visible, host coherent): 10.586ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 10.571ms
+  Time copy memory type 5 (device local, host visible, host coherent): 0.441ms
  #Accesses: 100 (upload excluded)
-  Time copy memory type 0: 10.4705ms
-  Time copy memory type 1 (device local): 0.320045ms
-  Time copy memory type 1 (device local; host pointer import): 0.320448ms
-  Time copy memory type 3 (host visible, host coherent): 10.4623ms
-  Time copy memory type 4 (host visible, host coherent, host cached): 10.4694ms
-  Time copy memory type 5 (device local, host visible, host coherent): 0.321045ms
+  Time copy memory type 0: 10.502ms
+  Time copy memory type 1 (device local): 0.319ms
+  Time copy memory type 1 (device local; host pointer import): 0.340ms
+  Time copy memory type 3 (host visible, host coherent): 10.507ms
+  Time copy memory type 4 (host visible, host coherent, host cached): 10.508ms
+  Time copy memory type 5 (device local, host visible, host coherent): 0.317ms
 
 Tested API: CUDA
  #Accesses: 1
-  Time copy cudaMalloc: 10.9288ms
-  Time copy cudaMallocManaged: 121.715ms
-  Time copy cudaMallocManaged2: 11.9156ms
-  Time copy cudaMallocHost: 17.5422ms
+  Time copy cudaMalloc: 10.902ms
+  Time copy cudaMallocManaged: 125.385ms
+  Time copy cudaMallocManaged2: 12.186ms
+  Time copy cudaMallocHost: 17.955ms
  #Accesses: 10
-  Time copy cudaMalloc: 1.39011ms
-  Time copy cudaMallocManaged: 13.0424ms
-  Time copy cudaMallocManaged2: 1.48444ms
-  Time copy cudaMallocHost: 11.2858ms
+  Time copy cudaMalloc: 1.377ms
+  Time copy cudaMallocManaged: 12.945ms
+  Time copy cudaMallocManaged2: 1.462ms
+  Time copy cudaMallocHost: 11.307ms
  #Accesses: 100
-  Time copy cudaMalloc: 0.435943ms
-  Time copy cudaMallocManaged: 1.51968ms
-  Time copy cudaMallocManaged2: 0.4465ms
-  Time copy cudaMallocHost: 10.6081ms
+  Time copy cudaMalloc: 0.435ms
+  Time copy cudaMallocManaged: 1.600ms
+  Time copy cudaMallocManaged2: 0.440ms
+  Time copy cudaMallocHost: 10.650ms
  #Accesses: 100 (upload excluded)
-  Time copy cudaMalloc: 0.326108ms
-  Time copy cudaMallocManaged: 1.03326ms
-  Time copy cudaMallocManaged2: 0.330267ms
-  Time copy cudaMallocHost: 10.535ms
+  Time copy cudaMalloc: 0.331ms
+  Time copy cudaMallocManaged: 1.086ms
+  Time copy cudaMallocManaged2: 0.330ms
+  Time copy cudaMallocHost: 10.592ms
 
 Tested API: SYCL
  #Accesses: 1
-  Time copy malloc_device: 10.6607ms
-  Time copy malloc_shared: 10.9709ms
-  Time copy malloc_host: 17.5261ms
+  Time copy malloc_device: 10.674ms
+  Time copy malloc_shared: 10.985ms
+  Time copy malloc_host: 17.438ms
  #Accesses: 10
-  Time copy malloc_device: 1.3557ms
-  Time copy malloc_shared: 1.42527ms
-  Time copy malloc_host: 11.2005ms
+  Time copy malloc_device: 1.349ms
+  Time copy malloc_shared: 1.394ms
+  Time copy malloc_host: 11.227ms
  #Accesses: 100
-  Time copy malloc_device: 0.432429ms
-  Time copy malloc_shared: 0.436729ms
-  Time copy malloc_host: 10.5896ms
+  Time copy malloc_device: 0.432ms
+  Time copy malloc_shared: 0.435ms
+  Time copy malloc_host: 10.650ms
  #Accesses: 100 (upload excluded)
-  Time copy malloc_device: 0.329898ms
-  Time copy malloc_shared: 0.329332ms
-  Time copy malloc_host: 10.5223ms
+  Time copy malloc_device: 0.330ms
+  Time copy malloc_shared: 0.329ms
+  Time copy malloc_host: 10.854ms
+```
+
+
+
+# Example data (4 KiB)
+
+## RTX 3090 (Ubuntu 24.04, driver 595.58.03)
+
+```
+Using buffer size 4KiB
+
+Running on NVIDIA GeForce RTX 3090
+Tested API: Vulkan
+ #Accesses: 1
+  Time copy memory type 0: 39.151us
+  Time copy memory type 1 (device local): 36.423us
+  Time copy memory type 1 (device local; host pointer import): 341.331us
+  Time copy memory type 3 (host visible, host coherent): 32.719us
+  Time copy memory type 4 (host visible, host coherent, host cached): 37.904us
+  Time copy memory type 5 (device local, host visible, host coherent): 35.572us
+ #Accesses: 10
+  Time copy memory type 0: 5.833us
+  Time copy memory type 1 (device local): 5.607us
+  Time copy memory type 1 (device local; host pointer import): 36.316us
+  Time copy memory type 3 (host visible, host coherent): 5.477us
+  Time copy memory type 4 (host visible, host coherent, host cached): 7.769us
+  Time copy memory type 5 (device local, host visible, host coherent): 5.095us
+ #Accesses: 100
+  Time copy memory type 0: 2.294us
+  Time copy memory type 1 (device local): 2.658us
+  Time copy memory type 1 (device local; host pointer import): 6.181us
+  Time copy memory type 3 (host visible, host coherent): 2.554us
+  Time copy memory type 4 (host visible, host coherent, host cached): 2.717us
+  Time copy memory type 5 (device local, host visible, host coherent): 2.832us
+ #Accesses: 100 (upload excluded)
+  Time copy memory type 0: 2.930us
+  Time copy memory type 1 (device local): 2.826us
+  Time copy memory type 1 (device local; host pointer import): 2.931us
+  Time copy memory type 3 (host visible, host coherent): 2.934us
+  Time copy memory type 4 (host visible, host coherent, host cached): 2.807us
+  Time copy memory type 5 (device local, host visible, host coherent): 2.878us
+
+Tested API: CUDA
+ #Accesses: 1
+  Time copy cudaMalloc: 17.413us
+  Time copy cudaMallocManaged: 70.036us
+  Time copy cudaMallocManaged2: 41.094us
+  Time copy cudaMallocHost: 8.118us
+ #Accesses: 10
+  Time copy cudaMalloc: 4.117us
+  Time copy cudaMallocManaged: 10.776us
+  Time copy cudaMallocManaged2: 6.935us
+  Time copy cudaMallocHost: 4.674us
+ #Accesses: 100
+  Time copy cudaMalloc: 2.339us
+  Time copy cudaMallocManaged: 4.397us
+  Time copy cudaMallocManaged2: 2.454us
+  Time copy cudaMallocHost: 3.988us
+ #Accesses: 100 (upload excluded)
+  Time copy cudaMalloc: 2.311us
+  Time copy cudaMallocManaged: 4.104us
+  Time copy cudaMallocManaged2: 2.406us
+  Time copy cudaMallocHost: 3.975us
+
+Tested API: SYCL
+ #Accesses: 1
+  Time copy malloc_device: 15.360us
+  Time copy malloc_shared: 13.673us
+  Time copy malloc_host: 15.737us
+ #Accesses: 10
+  Time copy malloc_device: 7.978us
+  Time copy malloc_shared: 7.154us
+  Time copy malloc_host: 8.394us
+ #Accesses: 100
+  Time copy malloc_device: 6.158us
+  Time copy malloc_shared: 6.147us
+  Time copy malloc_host: 6.245us
+ #Accesses: 100 (upload excluded)
+  Time copy malloc_device: 6.100us
+  Time copy malloc_shared: 6.092us
+  Time copy malloc_host: 6.178us
 ```
 
 

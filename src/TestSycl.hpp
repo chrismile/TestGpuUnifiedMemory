@@ -31,6 +31,8 @@
 
 #include <cstdint>
 
-DLL_OBJECT_SYCL void runTestsSycl(const uint8_t* deviceUuid, void (*checkMemoryContentCallback)(const void* hostPtr));
+DLL_OBJECT_SYCL void runTestsSycl(
+        const uint8_t* deviceUuid, uint32_t numElements,
+        void (*checkMemoryContentCallback)(uint32_t numElements, const void* hostPtr));
 
 #endif //TESTGPUUNIFIEDMEMORY_TESTSYCL_HPP

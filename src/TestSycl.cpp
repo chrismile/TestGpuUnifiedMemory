@@ -49,11 +49,12 @@ sycl::event copyBufferKernel(
 
 double runTestsSyclIndividual(
         sycl::queue& syclQueue, int numCopiesPerRun, bool measureUpload,
-        int32_t numElements, float* ptrSrc, float* ptrDst, float* hostPtr,
-        const std::function<sycl::event()>& uploadDataCallback, void (*checkMemoryContentCallback)(const void* hostPtr)) {
-    const int numRuns = numCopiesPerRun <= 1 ? 10 : 1;
+        uint32_t numElements, float* ptrSrc, float* ptrDst, float* hostPtr,
+        const std::function<sycl::event()>& uploadDataCallback,
+        void (*checkMemoryContentCallback)(uint32_t numElements, const void* hostPtr)) {
+    const int numRuns = getNumRuns(numCopiesPerRun, numElements);
 
-    double elapsedTimeMs = 0.0;
+    double elapsedTimeNs = 0.0;
     std::string errorMessage;
     for (int it = 0; it < numRuns + 1; it++) {
         if (!measureUpload) {
@@ -74,19 +75,21 @@ double runTestsSyclIndividual(
         auto elapsedTimeRunNs = std::chrono::duration_cast<std::chrono::nanoseconds>(timeStop - timeStart);
         if (it != 0) {
             // First run is warmup.
-            elapsedTimeMs += double(elapsedTimeRunNs.count()) * 1e-6 / double(numRuns * numCopiesPerRun);
+            elapsedTimeNs += double(elapsedTimeRunNs.count()) / double(numRuns * numCopiesPerRun);
         }
         auto copyToHostEvent = syclQueue.memcpy(hostPtr, ptrDst, numElements * sizeof(float));
         copyToHostEvent.wait_and_throw();
 
         // Check equality to expected values.
-        checkMemoryContentCallback(hostPtr);
+        checkMemoryContentCallback(numElements, hostPtr);
     }
 
-    return elapsedTimeMs;
+    return elapsedTimeNs;
 }
 
-void runTestsSycl(const uint8_t* deviceUuid, void (*checkMemoryContentCallback)(const void* hostPtr)) {
+void runTestsSycl(
+        const uint8_t* deviceUuid, uint32_t numElements,
+        void (*checkMemoryContentCallback)(uint32_t numElements, const void* hostPtr)) {
     sycl::device syclDevice;
     try {
         syclDevice = sycl::detail::select_device([deviceUuid](const sycl::device &testedDevice) -> int {
@@ -134,33 +137,33 @@ void runTestsSycl(const uint8_t* deviceUuid, void (*checkMemoryContentCallback)(
             auto uploadDataCallback = [&]() -> sycl::event {
                 return syclQueue.memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
-            double elapsedTimeMs = runTestsSyclIndividual(
+            double elapsedTimeNs = runTestsSyclIndividual(
                     syclQueue, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             sycl::free(ptrSrc, syclQueue);
-            std::cout << "  Time copy malloc_device: " << elapsedTimeMs << "ms" << std::endl;
+            std::cout << "  Time copy malloc_device: " << convertTimeToString(elapsedTimeNs, numElements) << std::endl;
         }
         {
             ptrSrc = sycl::malloc_shared<float>(numElements, syclQueue);
             auto uploadDataCallback = [&]() {
                 return syclQueue.memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
-            double elapsedTimeMs = runTestsSyclIndividual(
+            double elapsedTimeNs = runTestsSyclIndividual(
                     syclQueue, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             sycl::free(ptrSrc, syclQueue);
-            std::cout << "  Time copy malloc_shared: " << elapsedTimeMs << "ms" << std::endl;
+            std::cout << "  Time copy malloc_shared: " << convertTimeToString(elapsedTimeNs, numElements) << std::endl;
         }
         {
             ptrSrc = sycl::malloc_host<float>(numElements, syclQueue);
             auto uploadDataCallback = [&]() {
                 return syclQueue.memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
-            double elapsedTimeMs = runTestsSyclIndividual(
+            double elapsedTimeNs = runTestsSyclIndividual(
                     syclQueue, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             sycl::free(ptrSrc, syclQueue);
-            std::cout << "  Time copy malloc_host: " << elapsedTimeMs << "ms" << std::endl;
+            std::cout << "  Time copy malloc_host: " << convertTimeToString(elapsedTimeNs, numElements) << std::endl;
         }
     }
     std::cout << std::endl;

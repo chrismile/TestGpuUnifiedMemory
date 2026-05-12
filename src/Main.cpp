@@ -35,6 +35,7 @@
 #include <Utils/File/Logfile.hpp>
 #include <Graphics/Vulkan/Utils/Instance.hpp>
 #include <Graphics/Vulkan/Utils/Device.hpp>
+#include <ImGui/Widgets/NumberFormatting.hpp>
 
 #ifdef SUPPORT_CUDA
 #include <Graphics/Vulkan/Utils/InteropCuda.hpp>
@@ -60,7 +61,7 @@ void vulkanErrorCallbackHeadless() {
     std::cerr << "Application callback" << std::endl;
 }
 
-void checkMemoryContentCallback(const void* hostPtr) {
+void checkMemoryContentCallback(uint32_t numElements, const void* hostPtr) {
     std::string errorMessage;
     if (!checkIsArrayLinear(numElements, hostPtr, errorMessage)) {
         sgl::Logfile::get()->throwError("Memory content mismatched.");
@@ -143,10 +144,10 @@ bool getMatchingHipDevice(sgl::vk::Device* device, hipDevice_t* hipDevice) {
 }
 #endif
 
-void runTests(sgl::vk::Device*& device) {
+void runTests(sgl::vk::Device*& device, uint32_t numElements) {
     std::cout << "Running on " << device->getDeviceName() << std::endl;
 
-    runTestsVulkan(device);
+    runTestsVulkan(device, numElements);
 
 #ifdef SUPPORT_CUDA
     if (device->getDeviceDriverId() == VK_DRIVER_ID_NVIDIA_PROPRIETARY) {
@@ -169,7 +170,7 @@ void runTests(sgl::vk::Device*& device) {
 
         // Set the selected CUDA driver API device in the runtime API.
         setCudaDevice(cuDevice);
-        runTestsCuda(cuDevice, checkMemoryContentCallback);
+        runTestsCuda(cuDevice, numElements, checkMemoryContentCallback);
     }
 #endif
 
@@ -182,18 +183,38 @@ void runTests(sgl::vk::Device*& device) {
         hipDevice_t hipDevice;
         if (getMatchingHipDevice(device, &hipDevice)) {
             setHipDevice(hipDevice);
-            runTestsHip(hipDevice, checkMemoryContentCallback);
+            runTestsHip(hipDevice, numElements, checkMemoryContentCallback);
         }
     }
 #endif
 
 #ifdef SUPPORT_SYCL
-    runTestsSycl(device->getDeviceIDProperties().deviceUUID, checkMemoryContentCallback);
+    runTestsSycl(device->getDeviceIDProperties().deviceUUID, numElements, checkMemoryContentCallback);
 #endif
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     sgl::Logfile::get()->createLogfile("LogfileTestGpuUnifiedMemory.html", "TestGpuUnifiedMemory");
+
+    // Default buffer size: 128 MiB
+    uint32_t numElements = 32 * 1024 * 1024;
+    for (int i = 1; i < argc; i++) {
+        std::string command = argv[i];
+        if (command == "-n") {
+            i++;
+            if (i >= argc) {
+                sgl::Logfile::get()->throwError("Error: Expected integer argument after command line option '-n'.");
+            }
+            std::string numElementsString = argv[i];
+            numElements = sgl::fromString<uint32_t>(numElementsString);
+            if (numElements == 0) {
+                sgl::Logfile::get()->throwError("Error: Zero elements are invalid.");
+            }
+        } else {
+            sgl::Logfile::get()->throwError("Error: Unexpected argument '" + command + "'.");
+        }
+    }
+    std::cout << "Using buffer size " << sgl::getNiceMemoryString(numElements * sizeof(float), 4) << std::endl << std::endl;
 
     auto* instance = new sgl::vk::Instance;
 #ifdef NDEBUG
@@ -229,7 +250,7 @@ int main() {
         device->createDeviceHeadlessFromPhysicalDevice(
                 instance, physicalDevice, requiredDeviceExtensions, optionalDeviceExtensions,
                 requestedDeviceFeatures, false);
-        runTests(device);
+        runTests(device, numElements);
         delete device;
     }
 

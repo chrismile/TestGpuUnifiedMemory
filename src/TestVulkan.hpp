@@ -31,6 +31,6 @@
 
 #include <Graphics/Vulkan/Utils/Device.hpp>
 
-void runTestsVulkan(sgl::vk::Device* device);
+void runTestsVulkan(sgl::vk::Device* device, uint32_t numElements);
 
 #endif //TESTGPUUNIFIEDMEMORY_TESTVULKAN_HPP

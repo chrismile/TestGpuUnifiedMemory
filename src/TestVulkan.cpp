@@ -46,14 +46,14 @@
 constexpr uint32_t WORKGROUP_SIZE = 256u;
 
 double runTestsVulkanIndividual(
-        int numCopiesPerRun, bool measureUpload,
+        int numCopiesPerRun, bool measureUpload, uint32_t numElements, uint32_t numWorkgroups,
         sgl::vk::Renderer* renderer, const sgl::vk::FencePtr& fence, const sgl::vk::CommandBufferPtr& commandBuffer,
-        const sgl::vk::ComputeDataPtr& computeData, uint32_t numWorkgroups,
+        const sgl::vk::ComputeDataPtr& computeData,
         const std::function<void(VkCommandBuffer)>& uploadDataCallback,
         const sgl::vk::BufferPtr& bufferDst, const sgl::vk::BufferPtr& stagingBuffer) {
-    const int numRuns = numCopiesPerRun <= 1 ? 10 : 1;
+    const int numRuns = getNumRuns(numCopiesPerRun, numElements);
 
-    double elapsedTimeMs = 0.0;
+    double elapsedTimeNs = 0.0;
     std::string errorMessage;
     for (int it = 0; it < numRuns + 1; it++) {
         if (!measureUpload) {
@@ -88,7 +88,7 @@ double runTestsVulkanIndividual(
         auto elapsedTimeRunNs = std::chrono::duration_cast<std::chrono::nanoseconds>(timeStop - timeStart);
         if (it != 0) {
             // First run is warmup.
-            elapsedTimeMs += double(elapsedTimeRunNs.count()) * 1e-6 / double(numRuns * numCopiesPerRun);
+            elapsedTimeNs += double(elapsedTimeRunNs.count()) / double(numRuns * numCopiesPerRun);
         }
         fence->reset();
 
@@ -104,10 +104,10 @@ double runTestsVulkanIndividual(
         stagingBuffer->unmapMemory();
     }
 
-    return elapsedTimeMs;
+    return elapsedTimeNs;
 }
 
-void runTestsVulkan(sgl::vk::Device* device) {
+void runTestsVulkan(sgl::vk::Device* device, uint32_t numElements) {
     auto* shaderManager = new sgl::vk::ShaderManagerVk(device);
     auto renderer = new sgl::vk::Renderer(device);
 
@@ -283,10 +283,12 @@ void runTestsVulkan(sgl::vk::Device* device) {
                     bufferSrc->uploadData(sizeInBytes, bufferHost, commandBufferVk, stagingBufferUpload);
                 }
             };
-            double elapsedTimeUs = runTestsVulkanIndividual(
-                    numCopiesPerRun, measureUpload, renderer, fence, commandBuffer, computeData, numWorkgroups,
+            double elapsedTimeNs = runTestsVulkanIndividual(
+                    numCopiesPerRun, measureUpload, numElements, numWorkgroups,
+                    renderer, fence, commandBuffer, computeData,
                     uploadDataCallback, bufferDst, stagingBuffer);
-            std::cout << "  Time copy memory type " << memoryTypeIdx << memoryTypeString << ": " << elapsedTimeUs << "ms" << std::endl;
+            std::cout << "  Time copy memory type " << memoryTypeIdx << memoryTypeString << ": "
+                    << convertTimeToString(elapsedTimeNs, numElements) << std::endl;
 
             if (testHostPtrImportNext) {
                 testHostPtrImportNext = false;

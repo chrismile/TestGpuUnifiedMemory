@@ -72,13 +72,14 @@ __global__ void copyBufferKernel(uint32_t numElements, const float* __restrict__
 double runTestsCudaIndividual(
         cudaStream_t stream, int numCopiesPerRun, bool measureUpload,
         uint32_t numElements, float* ptrSrc, float* ptrDst, float* hostPtr,
-        const std::function<void()>& uploadDataCallback, void (*checkMemoryContentCallback)(const void* hostPtr)) {
+        const std::function<void()>& uploadDataCallback,
+        void (*checkMemoryContentCallback)(uint32_t numElements, const void* hostPtr)) {
     dim3 blockDim(256, 1, 1);
     dim3 gridDim(sgl::uiceil(numElements, blockDim.x), 1, 1);
 
-    const int numRuns = numCopiesPerRun <= 1 ? 10 : 1;
+    const int numRuns = getNumRuns(numCopiesPerRun, numElements);
 
-    double elapsedTimeMs = 0.0;
+    double elapsedTimeNs = 0.0;
     std::string errorMessage;
     for (int it = 0; it < numRuns + 1; it++) {
         if (!measureUpload) {
@@ -98,20 +99,22 @@ double runTestsCudaIndividual(
         auto elapsedTimeRunNs = std::chrono::duration_cast<std::chrono::nanoseconds>(timeStop - timeStart);
         if (it != 0) {
             // First run is warmup.
-            elapsedTimeMs += double(elapsedTimeRunNs.count()) * 1e-6 / double(numRuns * numCopiesPerRun);
+            elapsedTimeNs += double(elapsedTimeRunNs.count()) / double(numRuns * numCopiesPerRun);
         }
         errorCheckCuda(cudaMemcpyAsync(
                 hostPtr, ptrDst, numElements * sizeof(float), cudaMemcpyDeviceToHost, stream), "cudaMemcpyAsync");
         errorCheckCuda(cudaStreamSynchronize(stream), "cudaStreamSynchronize");
 
         // Check equality to expected values.
-        checkMemoryContentCallback(hostPtr);
+        checkMemoryContentCallback(numElements, hostPtr);
     }
 
-    return elapsedTimeMs;
+    return elapsedTimeNs;
 }
 
-void runTestsCuda(CUdevice cuDevice, void (*checkMemoryContentCallback)(const void* hostPtr)) {
+void runTestsCuda(
+        CUdevice cuDevice, uint32_t numElements,
+        void (*checkMemoryContentCallback)(uint32_t numElements, const void* hostPtr)) {
     cudaStream_t stream{};
     errorCheckCuda(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking), "cudaStreamCreateWithFlags");
 
@@ -146,22 +149,22 @@ void runTestsCuda(CUdevice cuDevice, void (*checkMemoryContentCallback)(const vo
                 errorCheckCuda(cudaMemcpyAsync(
                         ptrSrc, bufferHost, sizeInBytes, cudaMemcpyHostToDevice, stream), "cudaMemcpyAsync");
             };
-            double elapsedTimeMs = runTestsCudaIndividual(
+            double elapsedTimeNs = runTestsCudaIndividual(
                     stream, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             errorCheckCuda(cudaFree(ptrSrc), "cudaFree");
-            std::cout << "  Time copy cudaMalloc: " << elapsedTimeMs << "ms" << std::endl;
+            std::cout << "  Time copy cudaMalloc: " << convertTimeToString(elapsedTimeNs, numElements) << std::endl;
         }
         {
             errorCheckCuda(cudaMallocManaged(reinterpret_cast<void**>(&ptrSrc), sizeInBytes), "cudaMallocManaged");
             auto uploadDataCallback = [&]() {
                 memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
-            double elapsedTimeMs = runTestsCudaIndividual(
+            double elapsedTimeNs = runTestsCudaIndividual(
                     stream, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             errorCheckCuda(cudaFree(ptrSrc), "cudaFree");
-            std::cout << "  Time copy cudaMallocManaged: " << elapsedTimeMs << "ms" << std::endl;
+            std::cout << "  Time copy cudaMallocManaged: " << convertTimeToString(elapsedTimeNs, numElements) << std::endl;
         }
         {
             errorCheckCuda(cudaMallocManaged(reinterpret_cast<void**>(&ptrSrc), sizeInBytes), "cudaMallocManaged");
@@ -185,11 +188,11 @@ void runTestsCuda(CUdevice cuDevice, void (*checkMemoryContentCallback)(const vo
                             stream), "cudaMemPrefetchAsync");
                 }
             };
-            double elapsedTimeMs = runTestsCudaIndividual(
+            double elapsedTimeNs = runTestsCudaIndividual(
                     stream, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             errorCheckCuda(cudaFree(ptrSrc), "cudaFree");
-            std::cout << "  Time copy cudaMallocManaged2: " << elapsedTimeMs << "ms" << std::endl;
+            std::cout << "  Time copy cudaMallocManaged2: " << convertTimeToString(elapsedTimeNs, numElements) << std::endl;
         }
         {
             errorCheckCuda(cudaMallocHost(reinterpret_cast<void**>(&ptrSrc), sizeInBytes), "cudaMallocHost");
@@ -209,11 +212,11 @@ void runTestsCuda(CUdevice cuDevice, void (*checkMemoryContentCallback)(const vo
             auto uploadDataCallback = [&]() {
                 memcpy(ptrSrc, bufferHost, sizeInBytes);
             };
-            double elapsedTimeMs = runTestsCudaIndividual(
+            double elapsedTimeNs = runTestsCudaIndividual(
                     stream, numCopiesPerRun, measureUpload, numElements, ptrSrc, ptrDst, hostPtr,
                     uploadDataCallback, checkMemoryContentCallback);
             errorCheckCuda(cudaFreeHost(ptrSrc), "cudaFreeHost");
-            std::cout << "  Time copy cudaMallocHost: " << elapsedTimeMs << "ms" << std::endl;
+            std::cout << "  Time copy cudaMallocHost: " << convertTimeToString(elapsedTimeNs, numElements) << std::endl;
         }
     }
     std::cout << std::endl;

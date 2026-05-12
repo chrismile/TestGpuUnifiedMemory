@@ -30,13 +30,37 @@
 #define TESTGPUUNIFIEDMEMORY_COMMON_HPP
 
 #include <string>
+#include <sstream>
 #include <cstdint>
 
 // Checks whether the entries in the passed pointer are linearly increasing.
 bool checkIsArrayLinear(size_t numEntries, const void* ptr, std::string& errorMessage);
+inline std::string convertTimeToString(double elapsedTimeNs, uint32_t numElements) {
+    double unitNumber;
+    std::string unitString;
+    if (numElements > 1024 * 1024) {
+        unitNumber = elapsedTimeNs * 1e-6;
+        unitString = "ms";
+    } else {
+        unitNumber = elapsedTimeNs * 1e-3;
+        unitString = "us";
+    }
 
-// Buffer size: 128 MiB
-constexpr uint32_t numElements = 32 * 1024 * 1024;
+    std::ostringstream ostr;
+    ostr.precision(3);
+    ostr << std::fixed << unitNumber;
+    return ostr.str() + unitString;
+}
+
+inline int getNumRuns(int numCopiesPerRun, uint32_t numElements) {
+    if (numElements > 8 * 1024 * 1024) {
+        return numCopiesPerRun <= 1 ? 10 : 1;
+    }
+    if (numElements > 8 * 1024) {
+        return 10;
+    }
+    return 100;
+}
 
 #define NUM_CONFIGS 4
 constexpr int configsNumCopiesPerRun[4] = { 1, 10, 100, 100 };
